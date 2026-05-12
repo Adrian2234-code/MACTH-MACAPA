@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Match Amapá - Conecte-se em Macapá</title>
+<style>
+  body { margin:0; font-family:'Segoe UI', sans-serif; background:#000; color:white; }
+  .nav { display:flex; justify-content:space-around; background:#b30000; padding:15px 0; }
+  .nav button { background:none; border:none; color:white; font-weight:bold; font-size:16px; cursor:pointer; transition:0.3s; }
+  .nav button:hover { color:#ff6666; }
+  .container { padding:20px; max-width:400px; margin:auto; }
+  .tab { display:none; }
+  input, select { width:95%; padding:12px; margin:10px 0; border-radius:10px; border:none; font-size:16px; }
+  input[type="file"]{ color:white; }
+  button { padding:12px 15px; border-radius:10px; border:none; font-weight:bold; cursor:pointer; background:#b30000; color:white; transition:0.3s; }
+  button:hover { background:#ff3333; }
+  #swipeContainer { position:relative; height:450px; margin-top:20px; perspective:1000px; }
+  .card { position:absolute; width:100%; height:100%; border-radius:15px; background:#fff; color:#b30000; display:flex; flex-direction:column; justify-content:center; align-items:center; box-shadow:0 5px 30px rgba(0,0,0,0.5); transition:all 0.4s; cursor:pointer; user-select:none; }
+  .card img { width:80%; border-radius:15px; margin-bottom:10px; }
+  #chatBox { height:300px; overflow-y:auto; margin-bottom:10px; padding:10px; background:rgba(255,255,255,0.9); color:#b30000; border-radius:10px; }
+  #chat input { width:75%; margin-right:5px; padding:10px; border-radius:10px; border:none; }
+  #chat button { width:20%; padding:10px; border-radius:10px; border:none; background:#b30000; color:white; }
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <button onclick="showTab('cadastro')">Cadastro</button>
+  <button onclick="showTab('matches')">Matches</button>
+  <button onclick="showTab('chat')">Chat</button>
+</div>
+
+<div class="container">
+  <!-- Aba Cadastro -->
+  <div id="cadastro" class="tab">
+    <h2>Crie seu Perfil</h2>
+    <input type="text" id="nome" placeholder="Nome">
+    <input type="number" id="idade" placeholder="Idade">
+    <select id="genero">
+      <option value="">Gênero</option>
+      <option value="feminino">Feminino</option>
+      <option value="masculino">Masculino</option>
+      <option value="outro">Outro</option>
+    </select>
+    <input type="file" id="foto" accept="image/*">
+    <button onclick="criarPerfil()">Criar Perfil</button>
+    <p id="perfilCriado"></p>
+  </div>
+
+  <!-- Aba Matches -->
+  <div id="matches" class="tab">
+    <h2>Encontre Matches</h2>
+    <div id="swipeContainer"></div>
+  </div>
+
+  <!-- Aba Chat -->
+  <div id="chat" class="tab">
+    <h2>Chat</h2>
+    <div id="chatBox"></div>
+    <input type="text" id="msgInput" placeholder="Mensagem">
+    <button onclick="enviarMsg()">Enviar</button>
+  </div>
+</div>
+
+<script>
+let usuarios=[
+  {nome:"João",idade:25,genero:"masculino",foto:"https://i.pravatar.cc/150?img=5"},
+  {nome:"Maria",idade:22,genero:"feminino",foto:"https://i.pravatar.cc/150?img=10"},
+  {nome:"Lucas",idade:30,genero:"masculino",foto:"https://i.pravatar.cc/150?img=20"},
+  {nome:"Ana",idade:27,genero:"feminino",foto:"https://i.pravatar.cc/150?img=15"}
+];
+let perfilAtivo=false;
+let indexCard=0;
+let perfilUsuario={};
+
+function showTab(tab){
+  document.querySelectorAll('.tab').forEach(t=>t.style.display='none');
+  document.getElementById(tab).style.display='block';
+  if(tab==='matches' && perfilAtivo) mostrarCard();
+}
+
+function criarPerfil(){
+  const nome=document.getElementById("nome").value;
+  const idade=document.getElementById("idade").value;
+  const genero=document.getElementById("genero").value;
+  const fotoInput=document.getElementById("foto");
+  
+  if(!nome || !idade || !genero || fotoInput.files.length===0){alert("Preencha todos os campos!"); return;}
+  
+  const reader=new FileReader();
+  reader.onload=function(e){
+    perfilUsuario={nome,idade,genero,foto:e.target.result};
+    perfilAtivo=true;
+    document.getElementById("perfilCriado").innerHTML=`Perfil criado: <b>${nome}, ${idade} anos, ${genero}</b>`;
+    alert("Perfil criado com sucesso! Vá para Matches para começar.");
+  }
+  reader.readAsDataURL(fotoInput.files[0]);
+}
+
+// Função swipe animado estilo Tinder
+function mostrarCard(){
+  if(!perfilAtivo) { alert("Crie um perfil primeiro!"); return;}
+  if(indexCard>=usuarios.length) indexCard=0;
+  const container=document.getElementById("swipeContainer");
+  container.innerHTML="";
+  const user=usuarios[indexCard];
+  const card=document.createElement("div"); card.className="card";
+  card.innerHTML=`<img src="${user.foto}"><h3>${user.nome}, ${user.idade}</h3><p>${user.genero}</p>`;
+  container.appendChild(card);
+
+  let offsetX=0;
+  let isDragging=false;
+
+  card.onmousedown=card.ontouchstart=function(e){
+    isDragging=true;
+    offsetX=e.clientX || e.touches[0].clientX;
+  }
+
+  card.onmousemove=card.ontouchmove=function(e){
+    if(!isDragging) return;
+    let x=(e.clientX || e.touches[0].clientX)-offsetX;
+    card.style.transform=`translateX(${x}px) rotate(${x/10}deg)`;
+  }
+
+  card.onmouseup=card.ontouchend=function(e){
+    if(!isDragging) return;
+    let x=(e.clientX || e.changedTouches[0].clientX)-offsetX;
+    if(x>100){ curtir(); }
+    else if(x<-100){ passar(); }
+    else{ card.style.transform=`translateX(0)`; }
+    isDragging=false;
+  }
+}
+
+function curtir(){ indexCard++; mostrarCard(); }
+function passar(){ indexCard++; mostrarCard(); }
+
+// Chat com IA
+function enviarMsg(){
+  const msgInput=document.getElementById("msgInput");
+  const msg=msgInput.value;
+  if(!msg) return;
+  const box=document.getElementById("chatBox");
+  const userMsg=document.createElement("p"); userMsg.textContent=`Você: ${msg}`; box.appendChild(userMsg);
+  const iaMsg=document.createElement("p"); iaMsg.textContent=`IA: ${responderIA(msg)}`; box.appendChild(iaMsg);
+  msgInput.value=""; box.scrollTop=box.scrollHeight;
+}
+
+function responderIA(msg){
+  const respostas=["Oi! Que bom te ver 😄","Conte-me mais sobre você","Interessante!","Haha adorei!"];
+  return respostas[Math.floor(Math.random()*respostas.length)];
+}
+
+// Mostrar aba cadastro inicialmente
+showTab('cadastro');
+</script>
+
+</body>
+</html>
